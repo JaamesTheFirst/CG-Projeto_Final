@@ -39,3 +39,6 @@
 
 # debug information files
 *.dwo
+
+#context and parts directory
+other_projects_for_context_and_parts/

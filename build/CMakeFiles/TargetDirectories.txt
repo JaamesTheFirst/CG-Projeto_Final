@@ -1,0 +1,3 @@
+/home/tiago/CG-Projeto_Final/build/CMakeFiles/super_mario_proto.dir
+/home/tiago/CG-Projeto_Final/build/CMakeFiles/edit_cache.dir
+/home/tiago/CG-Projeto_Final/build/CMakeFiles/rebuild_cache.dir

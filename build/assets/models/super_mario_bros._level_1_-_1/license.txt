@@ -1,0 +1,11 @@
+Model Information:
+* title:	Super Mario Bros. Level 1 - 1
+* source:	https://sketchfab.com/3d-models/super-mario-bros-level-1-1-b0d3fac19ecb4220866af47237e79c13
+* author:	Alfking49 (https://sketchfab.com/alfking49)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Super Mario Bros. Level 1 - 1" (https://sketchfab.com/3d-models/super-mario-bros-level-1-1-b0d3fac19ecb4220866af47237e79c13) by Alfking49 (https://sketchfab.com/alfking49) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
