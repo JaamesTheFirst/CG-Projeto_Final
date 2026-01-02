@@ -1,5 +1,7 @@
 #include "Model.hpp"
 #include "ShaderProgram.hpp"
+#include "Player.hpp"
+#include "Enemy.hpp"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -239,23 +241,7 @@ int main(int argc, char** argv) {
     const std::vector<glm::vec3>* colMins = nullptr;
     const std::vector<glm::vec3>* colMaxs = nullptr;
 
-    // Player setup
-    struct Player {
-        glm::vec3 pos{0.0f};
-        glm::vec3 vel{0.0f};
-        glm::vec3 halfExtents{0.5f, 1.0f, 0.5f};
-        bool grounded = false;
-    } player;
-    // Placeholder enemies (Goomba-like cubes)
-    struct Enemy {
-        glm::vec3 pos{0.0f};
-        glm::vec3 vel{0.0f};
-        glm::vec3 halfExtents{0.6f, 0.6f, 0.6f};
-        float speed = 6.0f;
-        float dir = 1.0f;
-        float rangeMin = 0.0f;
-        float rangeMax = 0.0f;
-    };
+    Player player;
     std::vector<Enemy> enemies;
 
     auto updateDerivedBounds = [&]() {
@@ -451,72 +437,6 @@ int main(int argc, char** argv) {
     float SKIN = 0.02f;
     // Maximum penetration allowed before resolving
     float MAX_PENETRATION = 0.1f;
-    // Per-axis swept movement with collision resolution against static colliders.
-    // Inputs: pos (player center), vel (player velocity), dt (delta time), axis (0=X,1=Y,2=Z).
-    // Output: pos/vel are modified in-place to resolve collisions.
-    auto moveAxis = [&](glm::vec3& pos, glm::vec3& vel, float dt, int axis) {
-        float delta = vel[axis] * dt;
-        if (delta == 0.0f) return;
-    
-        float dir = (delta > 0.0f) ? 1.0f : -1.0f;
-        float move = delta;
-    
-        glm::vec3 pMin = pos - player.halfExtents;
-        glm::vec3 pMax = pos + player.halfExtents;
-    
-        float bestMove = move;
-    
-        if (!colMins || !colMaxs) {
-            pos[axis] += move;
-            return;
-        }
-
-        for (size_t i = 0; i < colMins->size(); ++i) {
-            const glm::vec3& cMin = (*colMins)[i];
-            const glm::vec3& cMax = (*colMaxs)[i];
-    
-            // Overlap on other axes
-            if (axis == 0) {
-                if (pMax.y <= cMin.y || pMin.y >= cMax.y) continue;
-                if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
-            } else if (axis == 1) {
-                if (pMax.x <= cMin.x || pMin.x >= cMax.x) continue;
-                if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
-            }
-    
-            float dist;
-            if (dir > 0.0f) {
-                dist = cMin[axis] - pMax[axis] - SKIN;
-            } else {
-                dist = cMax[axis] - pMin[axis] + SKIN;
-            }
-    
-            // Handle initial penetration (important for floors)
-            if (std::abs(dist) < MAX_PENETRATION) {
-                // Push OUT of collision, not deeper
-                if (dir < 0.0f) { // falling
-                    bestMove = std::max(bestMove, dist);
-                } else { // moving up
-                    bestMove = std::min(bestMove, dist);
-                }
-                continue;
-            }
-
-    
-            if ((dir > 0.0f && dist >= 0.0f && dist < bestMove) ||
-                (dir < 0.0f && dist <= 0.0f && dist > bestMove)) {
-                bestMove = dist;
-            }
-        }
-    
-        pos[axis] += bestMove;
-    
-        if (bestMove != move) {
-            vel[axis] = 0.0f;
-        }
-    };
-    
-    
 
     // Simple cube for player render
     GLuint playerVAO = 0, playerVBO = 0;
@@ -591,117 +511,31 @@ int main(int argc, char** argv) {
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
         // Player input & physics (side-scroller: lock Z, only X movement)
-        glm::vec3 move(0.0f);
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) move.x -= 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) move.x += 1.0f;
-        if (glm::length(move) > 0.0f) move = glm::normalize(move);
-        player.vel.x = move.x * moveSpeed;
-        player.vel.z = 0.0f; // lock Z plane
-        player.vel.y -= gravity * deltaTime;
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.grounded) {
-            player.vel.y = jumpSpeed;
-            player.grounded = false;
+        float moveInputX = 0.0f;
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) moveInputX -= 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) moveInputX += 1.0f;
+        if (moveInputX != 0.0f) {
+            moveInputX = (moveInputX > 0.0f) ? 1.0f : -1.0f;
         }
-        // Z locked, no moveAxis on Z
-        moveAxis(player.pos, player.vel, deltaTime, 1);
-        // Integrate with per-axis collision
-        moveAxis(player.pos, player.vel, deltaTime, 0);
-        // Keep Z locked to plane
-        player.pos.z = levelMidZ;
-        // grounded check
-        player.grounded = false;
+        bool jumpPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+        player.Update(deltaTime,
+                      moveInputX,
+                      jumpPressed,
+                      moveSpeed,
+                      jumpSpeed,
+                      gravity,
+                      levelMidZ,
+                      colMins,
+                      colMaxs,
+                      boundsMin.y,
+                      SKIN,
+                      MAX_PENETRATION);
         glm::vec3 pMin = player.pos - player.halfExtents;
         glm::vec3 pMax = player.pos + player.halfExtents;
 
-        if (colMins && colMaxs) {
-            for (size_t i = 0; i < colMins->size(); ++i) {
-                const auto& cMin = (*colMins)[i];
-                const auto& cMax = (*colMaxs)[i];
-
-                bool overlapXZ =
-                    pMax.x > cMin.x && pMin.x < cMax.x &&
-                    pMax.z > cMin.z && pMin.z < cMax.z;
-
-                bool touchingFromAbove =
-                    std::abs(pMin.y - cMax.y) < 0.05f &&
-                    player.vel.y <= 0.0f;
-
-                if (overlapXZ && touchingFromAbove) {
-                    player.grounded = true;
-                    break;
-                }
-            }
-        }
-
-        // Fallback floor if a level has no colliders: pin player to level base.
-        if (!colMins || !colMaxs || colMins->empty()) {
-            float floorY = boundsMin.y + player.halfExtents.y;
-            if (player.pos.y < floorY) {
-                player.pos.y = floorY;
-                player.vel.y = 0.0f;
-                player.grounded = true;
-            }
-        }
-
         // Update enemies (simple patrol along X, locked to level Z, stick to ground or fall if no support).
         for (auto& e : enemies) {
-            e.vel = glm::vec3(e.dir * e.speed, 0.0f, 0.0f);
-
-            // Sweep along X against level colliders; bounce on hit.
-            float delta = e.vel.x * deltaTime;
-            float move = delta;
-            glm::vec3 pMin = e.pos - e.halfExtents;
-            glm::vec3 pMax = e.pos + e.halfExtents;
-            float dir = (delta > 0.0f) ? 1.0f : -1.0f;
-            float bestMove = move;
-
-            if (colMins && colMaxs) {
-                for (size_t i = 0; i < colMins->size(); ++i) {
-                    const auto& cMin = (*colMins)[i];
-                    const auto& cMax = (*colMaxs)[i];
-
-                    // Need overlap in Y/Z to block.
-                    if (pMax.y <= cMin.y || pMin.y >= cMax.y) continue;
-                    if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
-
-                    float dist = (dir > 0.0f)
-                        ? cMin.x - pMax.x - SKIN
-                        : cMax.x - pMin.x + SKIN;
-
-                    if ((dir > 0.0f && dist >= 0.0f && dist < bestMove) ||
-                        (dir < 0.0f && dist <= 0.0f && dist > bestMove)) {
-                        bestMove = dist;
-                    }
-                }
-            }
-
-            e.pos.x += bestMove;
-
-            // Bounce if blocked.
-            if (bestMove != move) {
-                e.dir = -e.dir;
-            }
-
-            // Keep within patrol range; bounce at ends.
-            if (e.pos.x > e.rangeMax) {
-                e.pos.x = e.rangeMax;
-                e.dir = -1.0f;
-            } else if (e.pos.x < e.rangeMin) {
-                e.pos.x = e.rangeMin;
-                e.dir = 1.0f;
-            }
-
-            e.pos.z = levelMidZ;
-            // Grounding: pick the highest surface below current height; never climb up to higher surfaces.
-            float groundY = findGroundBelow(e.pos.x, e.pos.z, e.pos.y + 0.1f);
-            float desiredY = groundY + e.halfExtents.y + 0.02f;
-            if (desiredY < e.pos.y) {
-                // Drop down toward the ground (fall if unsupported).
-                e.pos.y = std::max(desiredY, e.pos.y - gravity * deltaTime);
-            } else {
-                // Do not climb up onto taller platforms; stay at current height.
-                e.pos.y = e.pos.y;
-            }
+            e.Update(deltaTime, gravity, levelMidZ, SKIN, colMins, colMaxs, findGroundBelow);
         }
 
         // Player/enemy interaction: stomp to kill, side contact kills player.

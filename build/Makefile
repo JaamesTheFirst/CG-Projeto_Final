@@ -153,6 +153,30 @@ external/cgltf/cgltf.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.s
 .PHONY : external/cgltf/cgltf.c.s
 
+src/Enemy.o: src/Enemy.cpp.o
+.PHONY : src/Enemy.o
+
+# target to build an object file
+src/Enemy.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o
+.PHONY : src/Enemy.cpp.o
+
+src/Enemy.i: src/Enemy.cpp.i
+.PHONY : src/Enemy.i
+
+# target to preprocess a source file
+src/Enemy.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.i
+.PHONY : src/Enemy.cpp.i
+
+src/Enemy.s: src/Enemy.cpp.s
+.PHONY : src/Enemy.s
+
+# target to generate assembly for a file
+src/Enemy.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.s
+.PHONY : src/Enemy.cpp.s
+
 src/Model.o: src/Model.cpp.o
 .PHONY : src/Model.o
 
@@ -200,6 +224,30 @@ src/ObjLoader.s: src/ObjLoader.cpp.s
 src/ObjLoader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.s
 .PHONY : src/ObjLoader.cpp.s
+
+src/Player.o: src/Player.cpp.o
+.PHONY : src/Player.o
+
+# target to build an object file
+src/Player.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Player.cpp.o
+.PHONY : src/Player.cpp.o
+
+src/Player.i: src/Player.cpp.i
+.PHONY : src/Player.i
+
+# target to preprocess a source file
+src/Player.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Player.cpp.i
+.PHONY : src/Player.cpp.i
+
+src/Player.s: src/Player.cpp.s
+.PHONY : src/Player.s
+
+# target to generate assembly for a file
+src/Player.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Player.cpp.s
+.PHONY : src/Player.cpp.s
 
 src/ShaderProgram.o: src/ShaderProgram.cpp.o
 .PHONY : src/ShaderProgram.o
@@ -285,12 +333,18 @@ help:
 	@echo "... external/cgltf/cgltf.o"
 	@echo "... external/cgltf/cgltf.i"
 	@echo "... external/cgltf/cgltf.s"
+	@echo "... src/Enemy.o"
+	@echo "... src/Enemy.i"
+	@echo "... src/Enemy.s"
 	@echo "... src/Model.o"
 	@echo "... src/Model.i"
 	@echo "... src/Model.s"
 	@echo "... src/ObjLoader.o"
 	@echo "... src/ObjLoader.i"
 	@echo "... src/ObjLoader.s"
+	@echo "... src/Player.o"
+	@echo "... src/Player.i"
+	@echo "... src/Player.s"
 	@echo "... src/ShaderProgram.o"
 	@echo "... src/ShaderProgram.i"
 	@echo "... src/ShaderProgram.s"
