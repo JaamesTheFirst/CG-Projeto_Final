@@ -26,6 +26,8 @@ public:
 
     Model(const Model&) = delete;
     Model& operator=(const Model&) = delete;
+    Model(Model&&) noexcept;
+    Model& operator=(Model&&) noexcept;
 
     bool LoadFromObj(const std::filesystem::path& objPath, std::string* errorMessage = nullptr);
     bool LoadFromGlb(const std::filesystem::path& glbPath, std::string* errorMessage = nullptr);

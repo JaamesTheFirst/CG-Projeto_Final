@@ -25,6 +25,38 @@ Model::~Model() {
     Destroy();
 }
 
+Model::Model(Model&& other) noexcept {
+    *this = std::move(other);
+}
+
+Model& Model::operator=(Model&& other) noexcept {
+    if (this != &other) {
+        Destroy();
+        vao_ = other.vao_;
+        vbo_ = other.vbo_;
+        ebo_ = other.ebo_;
+        draws_ = std::move(other.draws_);
+        textures_ = std::move(other.textures_);
+        indexCount_ = other.indexCount_;
+        boundsMin_ = other.boundsMin_;
+        boundsMax_ = other.boundsMax_;
+        colliderMins_ = std::move(other.colliderMins_);
+        colliderMaxs_ = std::move(other.colliderMaxs_);
+
+        other.vao_ = 0;
+        other.vbo_ = 0;
+        other.ebo_ = 0;
+        other.indexCount_ = 0;
+        other.boundsMin_ = glm::vec3(0.0f);
+        other.boundsMax_ = glm::vec3(0.0f);
+        other.colliderMins_.clear();
+        other.colliderMaxs_.clear();
+        other.draws_.clear();
+        other.textures_.clear();
+    }
+    return *this;
+}
+
 bool Model::LoadFromObj(const std::filesystem::path& objPath, std::string* errorMessage) {
     ObjMesh mesh;
     if (!LoadObjMesh(objPath, mesh, errorMessage)) {
@@ -176,24 +208,6 @@ bool LoadCgltfFile(const std::filesystem::path& path, cgltf_data*& outData, std:
         return false;
     }
     
-    return true;
-}
-
-bool ReadVec3(const cgltf_accessor* accessor, cgltf_size index, glm::vec3& out) {
-    float tmp[3] = {0.0f, 0.0f, 0.0f};
-    if (cgltf_accessor_read_float(accessor, index, tmp, 3) != cgltf_result_success) {
-        return false;
-    }
-    out = glm::vec3(tmp[0], tmp[1], tmp[2]);
-    return true;
-}
-
-bool ReadVec2(const cgltf_accessor* accessor, cgltf_size index, glm::vec2& out) {
-    float tmp[2] = {0.0f, 0.0f};
-    if (cgltf_accessor_read_float(accessor, index, tmp, 2) != cgltf_result_success) {
-        return false;
-    }
-    out = glm::vec2(tmp[0], tmp[1]);
     return true;
 }
 
