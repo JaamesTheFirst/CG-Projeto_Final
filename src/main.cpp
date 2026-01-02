@@ -16,6 +16,7 @@
 
 namespace {
 
+// CameraController holds orbit camera state (distance, yaw/pitch in radians, drag flag, last mouse pos).
 struct CameraController {
     float distance = 160.0f;
     float yaw = glm::radians(45.0f);
@@ -25,14 +26,17 @@ struct CameraController {
     double lastY = 0.0;
 };
 
+// GLFW error callback: logs error code/message.
 void ErrorCallback(int code, const char* description) {
     std::cerr << "[GLFW] Error " << code << ": " << description << std::endl;
 }
 
+// GLFW resize callback: updates the GL viewport.
 void FrameBufferSizeCallback(GLFWwindow* /*window*/, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
+// Initializes GLFW with core profile hints. Returns true on success.
 bool InitGLFW() {
     glfwSetErrorCallback(ErrorCallback);
     if (!glfwInit()) {
@@ -49,6 +53,7 @@ bool InitGLFW() {
     return true;
 }
 
+// Initializes GLEW. Returns true on success.
 bool InitGLEW() {
     glewExperimental = GL_TRUE;
     GLenum glewError = glewInit();
@@ -62,10 +67,12 @@ bool InitGLEW() {
     return true;
 }
 
+// Helper to fetch camera state stored in the window user pointer.
 CameraController* GetCamera(GLFWwindow* window) {
     return static_cast<CameraController*>(glfwGetWindowUserPointer(window));
 }
 
+// Mouse wheel callback: zooms camera in/out.
 void ScrollCallback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
     if (auto* camera = GetCamera(window)) {
         camera->distance -= static_cast<float>(yoffset) * 8.0f;
@@ -73,6 +80,7 @@ void ScrollCallback(GLFWwindow* window, double /*xoffset*/, double yoffset) {
     }
 }
 
+// Mouse button callback: starts/stops dragging for orbit camera.
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*/) {
     if (button != GLFW_MOUSE_BUTTON_LEFT) {
         return;
@@ -90,6 +98,7 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int /*mods*
     }
 }
 
+// Mouse move callback: updates yaw/pitch when dragging.
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     auto* camera = GetCamera(window);
     if (!camera || !camera->dragging) {
@@ -101,11 +110,12 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     camera->lastX = xpos;
     camera->lastY = ypos;
 
-    camera->yaw += static_cast<float>(dx) * 0.005f;
-    camera->pitch += static_cast<float>(dy) * 0.005f;
+    camera->yaw -= static_cast<float>(dx) * 0.005f;
+    camera->pitch -= static_cast<float>(dy) * 0.005f;
     camera->pitch = std::clamp(camera->pitch, -1.2f, 1.2f);
 }
 
+// Keyboard camera controls (orbit and zoom) when enabled. deltaTime is frame time in seconds.
 void UpdateCameraFromKeyboard(GLFWwindow* window, CameraController& camera, float deltaTime) {
     const float orbitSpeed = 1.5f;
     const float zoomSpeed = 120.0f;
@@ -133,6 +143,7 @@ void UpdateCameraFromKeyboard(GLFWwindow* window, CameraController& camera, floa
     camera.distance = std::clamp(camera.distance, 20.0f, 400.0f);
 }
 
+// Tries several candidate paths to locate the assets directory. Returns the first existing dir.
 std::filesystem::path FindAssetsRoot(const char* executablePath) {
     std::vector<std::filesystem::path> candidates;
 
@@ -267,12 +278,142 @@ int main(int argc, char** argv) {
 
     float previousTime = static_cast<float>(glfwGetTime());
 
+    // Player setup
+    struct Player {
+        glm::vec3 pos{0.0f};
+        glm::vec3 vel{0.0f};
+        glm::vec3 halfExtents{0.5f, 1.0f, 0.5f};
+        bool grounded = false;
+    } player;
+    // Spawn above level
+    float levelMidZ = 0.5f * (boundsMin.z + boundsMax.z);
+    player.pos = glm::vec3(target.x, boundsMax.y + 5.0f, levelMidZ);
+
+    const auto& colMins = sceneModel.GetColliderMins();
+    const auto& colMaxs = sceneModel.GetColliderMaxs();
+
+    // AABB overlap test utility.
+    auto aabbOverlap = [](const glm::vec3& minA, const glm::vec3& maxA, const glm::vec3& minB, const glm::vec3& maxB) {
+        return (minA.x <= maxB.x && maxA.x >= minB.x) &&
+               (minA.y <= maxB.y && maxA.y >= minB.y) &&
+               (minA.z <= maxB.z && maxA.z >= minB.z);
+    };
+
+    // Skin width for collision resolution
+    float SKIN = 0.02f;
+    // Maximum penetration allowed before resolving
+    float MAX_PENETRATION = 0.1f;
+    // Per-axis swept movement with collision resolution against static colliders.
+    // Inputs: pos (player center), vel (player velocity), dt (delta time), axis (0=X,1=Y,2=Z).
+    // Output: pos/vel are modified in-place to resolve collisions.
+    auto moveAxis = [&](glm::vec3& pos, glm::vec3& vel, float dt, int axis) {
+        float delta = vel[axis] * dt;
+        if (delta == 0.0f) return;
+    
+        float dir = (delta > 0.0f) ? 1.0f : -1.0f;
+        float move = delta;
+    
+        glm::vec3 pMin = pos - player.halfExtents;
+        glm::vec3 pMax = pos + player.halfExtents;
+    
+        float bestMove = move;
+    
+        for (size_t i = 0; i < colMins.size(); ++i) {
+            const glm::vec3& cMin = colMins[i];
+            const glm::vec3& cMax = colMaxs[i];
+    
+            // Overlap on other axes
+            if (axis == 0) {
+                if (pMax.y <= cMin.y || pMin.y >= cMax.y) continue;
+                if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
+            } else if (axis == 1) {
+                if (pMax.x <= cMin.x || pMin.x >= cMax.x) continue;
+                if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
+            }
+    
+            float dist;
+            if (dir > 0.0f) {
+                dist = cMin[axis] - pMax[axis] - SKIN;
+            } else {
+                dist = cMax[axis] - pMin[axis] + SKIN;
+            }
+    
+            // Handle initial penetration (important for floors)
+            if (std::abs(dist) < MAX_PENETRATION) {
+                // Push OUT of collision, not deeper
+                if (dir < 0.0f) { // falling
+                    bestMove = std::max(bestMove, dist);
+                } else { // moving up
+                    bestMove = std::min(bestMove, dist);
+                }
+                continue;
+            }
+
+    
+            if ((dir > 0.0f && dist >= 0.0f && dist < bestMove) ||
+                (dir < 0.0f && dist <= 0.0f && dist > bestMove)) {
+                bestMove = dist;
+            }
+        }
+    
+        pos[axis] += bestMove;
+    
+        if (bestMove != move) {
+            vel[axis] = 0.0f;
+        }
+    };
+    
+    
+
+    // Simple cube for player render
+    GLuint playerVAO = 0, playerVBO = 0;
+    {
+        float verts[] = {
+            // pos               // normal        // uv
+            -1,-1,-1, 0,0,-1, 0,0,
+             1,-1,-1, 0,0,-1, 1,0,
+             1, 1,-1, 0,0,-1, 1,1,
+            -1, 1,-1, 0,0,-1, 0,1,
+            -1,-1, 1, 0,0, 1, 0,0,
+             1,-1, 1, 0,0, 1, 1,0,
+             1, 1, 1, 0,0, 1, 1,1,
+            -1, 1, 1, 0,0, 1, 0,1,
+        };
+        uint32_t inds[] = {
+            0,1,2, 0,2,3,
+            4,5,6, 4,6,7,
+            0,1,5, 0,5,4,
+            2,3,7, 2,7,6,
+            0,3,7, 0,7,4,
+            1,2,6, 1,6,5
+        };
+        glGenVertexArrays(1, &playerVAO);
+        glBindVertexArray(playerVAO);
+        glGenBuffers(1, &playerVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, playerVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+        GLuint ebo;
+        glGenBuffers(1, &ebo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(inds), inds, GL_STATIC_DRAW);
+        GLsizei stride = sizeof(float) * 8;
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(float)*3));
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(sizeof(float)*6));
+        glBindVertexArray(0);
+    }
+
+    float moveSpeed = 25.0f;
+    float jumpSpeed = 20.0f;
+    float gravity = 50.0f;
+
     while (!glfwWindowShouldClose(window)) {
         float currentTime = static_cast<float>(glfwGetTime());
         float deltaTime = currentTime - previousTime;
         previousTime = currentTime;
-
-        UpdateCameraFromKeyboard(window, camera, deltaTime);
 
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);
@@ -287,17 +428,56 @@ int main(int argc, char** argv) {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_DEPTH_TEST);
 
-        glm::vec3 cameraOffset;
-        cameraOffset.x = camera.distance * std::cos(camera.pitch) * std::sin(camera.yaw);
-        cameraOffset.y = camera.distance * std::sin(camera.pitch);
-        cameraOffset.z = camera.distance * std::cos(camera.pitch) * std::cos(camera.yaw);
-        glm::vec3 cameraPos = target + cameraOffset;
-
-        glm::mat4 view = glm::lookAt(cameraPos, target, glm::vec3(0.0f, 1.0f, 0.0f));
+        // Side-view camera locked to player.
+        glm::vec3 cameraPos = player.pos + glm::vec3(0.0f, 10.0f, 25.0f); // side view along Z
+        glm::vec3 lookTarget = player.pos;
+        glm::mat4 view = glm::lookAt(cameraPos, lookTarget, glm::vec3(0.0f, 1.0f, 0.0f));
         glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 500.0f);
 
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+
+        // Player input & physics (side-scroller: lock Z, only X movement)
+        glm::vec3 move(0.0f);
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) move.x -= 1.0f;
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) move.x += 1.0f;
+        if (glm::length(move) > 0.0f) move = glm::normalize(move);
+        player.vel.x = move.x * moveSpeed;
+        player.vel.z = 0.0f; // lock Z plane
+        player.vel.y -= gravity * deltaTime;
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && player.grounded) {
+            player.vel.y = jumpSpeed;
+            player.grounded = false;
+        }
+        // Z locked, no moveAxis on Z
+        moveAxis(player.pos, player.vel, deltaTime, 1);
+        // Integrate with per-axis collision
+        moveAxis(player.pos, player.vel, deltaTime, 0);
+        // Keep Z locked to plane
+        player.pos.z = levelMidZ;
+        // grounded check
+        player.grounded = false;
+        glm::vec3 pMin = player.pos - player.halfExtents;
+        glm::vec3 pMax = player.pos + player.halfExtents;
+
+        for (size_t i = 0; i < colMins.size(); ++i) {
+            const auto& cMin = colMins[i];
+            const auto& cMax = colMaxs[i];
+
+            bool overlapXZ =
+                pMax.x > cMin.x && pMin.x < cMax.x &&
+                pMax.z > cMin.z && pMin.z < cMax.z;
+
+                bool touchingFromAbove =
+                std::abs(pMin.y - cMax.y) < 0.05f &&
+                player.vel.y <= 0.0f;
+            
+
+            if (overlapXZ && touchingFromAbove) {
+                player.grounded = true;
+                break;
+            }
+        }
 
         shaderProgram.Use();
         shaderProgram.SetMat4("uModel", model);
@@ -312,6 +492,20 @@ int main(int argc, char** argv) {
         shaderProgram.SetInt("uMetalRoughMap", 1);
 
         sceneModel.Draw(shaderProgram);
+
+        // Draw player cube
+        glm::mat4 playerModel = glm::translate(glm::mat4(1.0f), player.pos) * glm::scale(glm::mat4(1.0f), player.halfExtents);
+        glm::mat3 playerNormal = glm::mat3(glm::transpose(glm::inverse(playerModel)));
+        shaderProgram.SetMat4("uModel", playerModel);
+        shaderProgram.SetMat3("uNormalMatrix", playerNormal);
+        shaderProgram.SetVec4("uMaterial.baseColorFactor", glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
+        shaderProgram.SetFloat("uMaterial.metallic", 0.0f);
+        shaderProgram.SetFloat("uMaterial.roughness", 1.0f);
+        shaderProgram.SetInt("uMaterial.hasBaseColorTex", 0);
+        shaderProgram.SetInt("uMaterial.hasMetalRoughTex", 0);
+        glBindVertexArray(playerVAO);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        glBindVertexArray(0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

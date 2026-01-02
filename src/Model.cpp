@@ -81,6 +81,8 @@ bool Model::LoadFromObj(const std::filesystem::path& objPath, std::string* error
 
     draws_.clear();
     textures_.clear();
+    colliderMins_.clear();
+    colliderMaxs_.clear();
     std::unordered_map<std::string, GLuint> textureCache;
 
     auto acquireTexture = [&](const std::filesystem::path& texPath, std::string& lastError) -> GLuint {
@@ -131,6 +133,21 @@ bool Model::LoadFromObj(const std::filesystem::path& objPath, std::string* error
         fallback.startIndex = 0;
         fallback.indexCount = static_cast<uint32_t>(mesh.indices.size());
         draws_.push_back(fallback);
+    }
+
+    // Build per-triangle colliders for tighter collision
+    colliderMins_.clear();
+    colliderMaxs_.clear();
+    colliderMins_.reserve(mesh.indices.size() / 3);
+    colliderMaxs_.reserve(mesh.indices.size() / 3);
+    for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3) {
+        const glm::vec3& p0 = mesh.vertices[mesh.indices[i]].position;
+        const glm::vec3& p1 = mesh.vertices[mesh.indices[i + 1]].position;
+        const glm::vec3& p2 = mesh.vertices[mesh.indices[i + 2]].position;
+        glm::vec3 mn = glm::min(p0, glm::min(p1, p2));
+        glm::vec3 mx = glm::max(p0, glm::max(p1, p2));
+        colliderMins_.push_back(mn);
+        colliderMaxs_.push_back(mx);
     }
 
     indexCount_ = mesh.indices.size();
@@ -346,7 +363,10 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
                 cgltf_accessor_unpack_floats(uvAcc, uvFloats.data(), uvFloats.size());
             }
 
-                for (cgltf_size vi = 0; vi < vertexCount; ++vi) {
+            glm::vec3 primMin( std::numeric_limits<float>::max());
+            glm::vec3 primMax(-std::numeric_limits<float>::max());
+
+            for (cgltf_size vi = 0; vi < vertexCount; ++vi) {
                     VertexPNT v{};
                     if (posOk) {
                         glm::vec4 pos = nodeTransform * glm::vec4(posFloats[vi * 3 + 0],
@@ -354,6 +374,8 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
                                                                    posFloats[vi * 3 + 2],
                                                                    1.0f);
                         v.position = glm::vec3(pos.x, pos.y, pos.z);
+                    primMin = glm::min(primMin, v.position);
+                    primMax = glm::max(primMax, v.position);
                     }
                     if (!normFloats.empty()) {
                         // Transform normals using inverse transpose
@@ -413,7 +435,11 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
 
                 draw.indexCount = static_cast<uint32_t>(indices.size()) - draw.startIndex;
                 if (draw.indexCount > 0) {
+                    draw.aabbMin = primMin;
+                    draw.aabbMax = primMax;
                     draws_.push_back(draw);
+                    colliderMins_.push_back(primMin);
+                    colliderMaxs_.push_back(primMax);
                 }
             }
         }
@@ -476,12 +502,17 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
                     cgltf_accessor_unpack_floats(uvAcc, uvFloats.data(), uvFloats.size());
                 }
 
+                glm::vec3 primMin( std::numeric_limits<float>::max());
+                glm::vec3 primMax(-std::numeric_limits<float>::max());
+
                 for (cgltf_size vi = 0; vi < vertexCount; ++vi) {
                     VertexPNT v{};
                     if (posOk) {
                         v.position = glm::vec3(posFloats[vi * 3 + 0],
                                                posFloats[vi * 3 + 1],
                                                posFloats[vi * 3 + 2]);
+                        primMin = glm::min(primMin, v.position);
+                        primMax = glm::max(primMax, v.position);
                     }
                     if (!normFloats.empty()) {
                         v.normal = glm::vec3(normFloats[vi * 3 + 0],
@@ -534,7 +565,11 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
 
                 draw.indexCount = static_cast<uint32_t>(indices.size()) - draw.startIndex;
                 if (draw.indexCount > 0) {
+                    draw.aabbMin = primMin;
+                    draw.aabbMax = primMax;
                     draws_.push_back(draw);
+                    colliderMins_.push_back(primMin);
+                    colliderMaxs_.push_back(primMax);
                 }
             }
         }
@@ -548,6 +583,21 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
         }
         Destroy();
         return false;
+    }
+
+    // Build per-triangle colliders for tighter collision
+    colliderMins_.clear();
+    colliderMaxs_.clear();
+    colliderMins_.reserve(indices.size() / 3);
+    colliderMaxs_.reserve(indices.size() / 3);
+    for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+        const glm::vec3& p0 = vertices[indices[i]].position;
+        const glm::vec3& p1 = vertices[indices[i + 1]].position;
+        const glm::vec3& p2 = vertices[indices[i + 2]].position;
+        glm::vec3 mn = glm::min(p0, glm::min(p1, p2));
+        glm::vec3 mx = glm::max(p0, glm::max(p1, p2));
+        colliderMins_.push_back(mn);
+        colliderMaxs_.push_back(mx);
     }
 
     boundsMin_ = vertices.front().position;
@@ -618,6 +668,19 @@ bool Model::LoadFromGlb(const std::filesystem::path& glbPath, std::string* error
         glBindBuffer(GL_ARRAY_BUFFER, vbo_);
         glBufferSubData(GL_ARRAY_BUFFER, 0, verts.size() * sizeof(VertexPNT), verts.data());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    // Build per-triangle colliders
+    colliderMins_.reserve(indices.size() / 3);
+    colliderMaxs_.reserve(indices.size() / 3);
+    for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+        const glm::vec3& p0 = vertices[indices[i]].position;
+        const glm::vec3& p1 = vertices[indices[i + 1]].position;
+        const glm::vec3& p2 = vertices[indices[i + 2]].position;
+        glm::vec3 mn = glm::min(p0, glm::min(p1, p2));
+        glm::vec3 mx = glm::max(p0, glm::max(p1, p2));
+        colliderMins_.push_back(mn);
+        colliderMaxs_.push_back(mx);
     }
 
     indexCount_ = indices.size();

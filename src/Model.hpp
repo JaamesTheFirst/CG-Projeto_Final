@@ -11,6 +11,8 @@ struct MeshDrawCall {
     glm::vec4 baseColorFactor{0.8f, 0.8f, 0.8f, 1.0f};
     float metallic = 0.0f;
     float roughness = 1.0f;
+    glm::vec3 aabbMin{0.0f};
+    glm::vec3 aabbMax{0.0f};
     GLuint baseColorTexture = 0;
     GLuint metallicRoughnessTexture = 0;
     bool hasBaseColorTexture = false;
@@ -33,6 +35,9 @@ public:
 
     glm::vec3 GetBoundsMin() const { return boundsMin_; }
     glm::vec3 GetBoundsMax() const { return boundsMax_; }
+    const std::vector<glm::vec3>& GetColliderMins() const { return colliderMins_; }
+    const std::vector<glm::vec3>& GetColliderMaxs() const { return colliderMaxs_; }
+    const std::vector<MeshDrawCall>& GetDraws() const { return draws_; }
 
 private:
     GLuint vao_ = 0;
@@ -43,6 +48,8 @@ private:
     std::size_t indexCount_ = 0;
     glm::vec3 boundsMin_{0.0f};
     glm::vec3 boundsMax_{0.0f};
+    std::vector<glm::vec3> colliderMins_;
+    std::vector<glm::vec3> colliderMaxs_;
 };
 
 
