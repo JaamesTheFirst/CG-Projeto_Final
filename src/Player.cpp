@@ -10,18 +10,20 @@ void Player::GetAABB(glm::vec3& outMin, glm::vec3& outMax) const {
 
 void Player::Update(float dt,
                     float moveInputX,
+                    float moveInputZ,
                     bool jumpPressed,
                     float moveSpeed,
                     float jumpSpeed,
                     float gravity,
-                    float levelMidZ,
+                    bool lockToPlaneZ,
+                    float planeZ,
                     const std::vector<glm::vec3>* colMins,
                     const std::vector<glm::vec3>* colMaxs,
                     float boundsMinY,
                     float skin,
                     float maxPenetration) {
     vel.x = moveInputX * moveSpeed;
-    vel.z = 0.0f;
+    vel.z = moveInputZ * moveSpeed;
     vel.y -= gravity * dt;
     if (jumpPressed && grounded) {
         vel.y = jumpSpeed;
@@ -49,12 +51,15 @@ void Player::Update(float dt,
             const glm::vec3& cMin = (*colMins)[i];
             const glm::vec3& cMax = (*colMaxs)[i];
 
-            if (axis == 0) {
+            if (axis == 0) { // X move: require overlap in Y and Z
                 if (pMax.y <= cMin.y || pMin.y >= cMax.y) continue;
                 if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
-            } else if (axis == 1) {
+            } else if (axis == 1) { // Y move: require overlap in X and Z
                 if (pMax.x <= cMin.x || pMin.x >= cMax.x) continue;
                 if (pMax.z <= cMin.z || pMin.z >= cMax.z) continue;
+            } else if (axis == 2) { // Z move: require overlap in X and Y
+                if (pMax.x <= cMin.x || pMin.x >= cMax.x) continue;
+                if (pMax.y <= cMin.y || pMin.y >= cMax.y) continue;
             }
 
             float dist;
@@ -90,8 +95,13 @@ void Player::Update(float dt,
     moveAxis(1);
     moveAxis(0);
 
-    // Lock Z plane
-    pos.z = levelMidZ;
+    // Z movement only when in 3D mode.
+    if (!lockToPlaneZ) {
+        moveAxis(2);
+    } else {
+        vel.z = 0.0f;
+        pos.z = planeZ;
+    }
 
     // Grounded check
     grounded = false;

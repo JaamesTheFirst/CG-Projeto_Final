@@ -81,12 +81,12 @@ clean: CMakeFiles/super_mario_proto.dir/clean
 CMakeFiles/super_mario_proto.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9 "Built target super_mario_proto"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=1,2,3,4,5,6,7,8,9,10 "Built target super_mario_proto"
 .PHONY : CMakeFiles/super_mario_proto.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/super_mario_proto.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiago/CG-Projeto_Final/build/CMakeFiles 9
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiago/CG-Projeto_Final/build/CMakeFiles 10
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/super_mario_proto.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/tiago/CG-Projeto_Final/build/CMakeFiles 0
 .PHONY : CMakeFiles/super_mario_proto.dir/rule

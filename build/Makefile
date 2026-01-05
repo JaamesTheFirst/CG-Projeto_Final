@@ -177,6 +177,30 @@ src/Enemy.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.s
 .PHONY : src/Enemy.cpp.s
 
+src/LevelManager.o: src/LevelManager.cpp.o
+.PHONY : src/LevelManager.o
+
+# target to build an object file
+src/LevelManager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o
+.PHONY : src/LevelManager.cpp.o
+
+src/LevelManager.i: src/LevelManager.cpp.i
+.PHONY : src/LevelManager.i
+
+# target to preprocess a source file
+src/LevelManager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.i
+.PHONY : src/LevelManager.cpp.i
+
+src/LevelManager.s: src/LevelManager.cpp.s
+.PHONY : src/LevelManager.s
+
+# target to generate assembly for a file
+src/LevelManager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.s
+.PHONY : src/LevelManager.cpp.s
+
 src/Model.o: src/Model.cpp.o
 .PHONY : src/Model.o
 
@@ -336,6 +360,9 @@ help:
 	@echo "... src/Enemy.o"
 	@echo "... src/Enemy.i"
 	@echo "... src/Enemy.s"
+	@echo "... src/LevelManager.o"
+	@echo "... src/LevelManager.i"
+	@echo "... src/LevelManager.s"
 	@echo "... src/Model.o"
 	@echo "... src/Model.i"
 	@echo "... src/Model.s"

@@ -2,6 +2,7 @@
 #include "ShaderProgram.hpp"
 #include "Player.hpp"
 #include "Enemy.hpp"
+#include "LevelManager.hpp"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -152,7 +153,6 @@ std::filesystem::path FindAssetsRoot(const char* executablePath) {
 } // namespace
 
 int main(int argc, char** argv) {
-    (void)argc;
 
     if (!InitGLFW()) {
         return EXIT_FAILURE;
@@ -202,230 +202,30 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
-    // Discover available levels (directories under assets/models/levels).
-    Model sceneModel;
-    std::string modelError;
-    std::vector<std::filesystem::path> levelRoots;
-    const auto levelsRoot = assetsRoot / "models" / "levels";
-    if (std::filesystem::exists(levelsRoot)) {
-        for (const auto& entry : std::filesystem::directory_iterator(levelsRoot)) {
-            if (entry.is_directory()) {
-                levelRoots.push_back(entry.path());
-            }
-        }
-        std::sort(levelRoots.begin(), levelRoots.end(), [](const auto& a, const auto& b) {
-            return a.filename().string() < b.filename().string();
-        });
-        // Ensure the classic level_1 stays first if present.
-        auto it = std::find_if(levelRoots.begin(), levelRoots.end(), [](const auto& p) {
-            const auto name = p.filename().string();
-            return name.find("level_1") != std::string::npos || name.find("super_mario") != std::string::npos;
-        });
-        if (it != levelRoots.end()) {
-            std::rotate(levelRoots.begin(), it, it + 1);
-        }
-    }
-    // Legacy fallback if no subdirs are found.
-    if (levelRoots.empty()) {
-        levelRoots.push_back(assetsRoot / "models" / "super_mario_bros._level_1_-_1");
-    }
-
-    glm::vec3 boundsMin{0.0f}, boundsMax{0.0f}, target{0.0f}, extent{0.0f};
-    float diag = 50.0f;
-    float levelMidZ = 0.0f;
-    glm::vec3 flagTriggerCenter{0.0f};
-    float flagTriggerRadius = 10.0f;
-    int currentLevel = 0;
-    const std::filesystem::path fbxPath = assetsRoot / "models" / "tanabata-evening-kyoto-inspired-city-scene" / "source" / "testexport.fbx";
-    const std::filesystem::path objPath = assetsRoot / "models" / "map.obj";
-    const std::vector<glm::vec3>* colMins = nullptr;
-    const std::vector<glm::vec3>* colMaxs = nullptr;
-
     Player player;
     std::vector<Enemy> enemies;
+    LevelManager levelManager(assetsRoot);
 
-    auto updateDerivedBounds = [&]() {
-        boundsMin = sceneModel.GetBoundsMin();
-        boundsMax = sceneModel.GetBoundsMax();
-        target = 0.5f * (boundsMin + boundsMax);
-        extent = boundsMax - boundsMin;
-        diag = glm::length(extent);
-        if (diag <= 0.001f) {
-            diag = 50.0f;
-        }
-        levelMidZ = 0.5f * (boundsMin.z + boundsMax.z);
-        camera.distance = diag * 1.5f;
-        std::cout << "Model bounds: min=" << boundsMin.x << "," << boundsMin.y << "," << boundsMin.z 
-                  << " max=" << boundsMax.x << "," << boundsMax.y << "," << boundsMax.z 
-                  << " diagonal=" << diag << " camera distance=" << camera.distance << std::endl;
-        // Simple trigger volume near level end; when player overlaps, we advance to next level.
-        // Spherical trigger near the end of the level (generous radius so it is easy to hit).
-        float triggerDepth = std::max(5.0f, extent.x * 0.05f);
-        flagTriggerCenter = glm::vec3(boundsMax.x - triggerDepth * 0.5f,
-                                      0.5f * (boundsMin.y + boundsMax.y),
-                                      levelMidZ);
-        flagTriggerRadius = std::max({10.0f, triggerDepth * 1.5f, extent.z * 0.5f});
-    };
-
-    auto applyColliderRefs = [&]() {
-        colMins = &sceneModel.GetColliderMins();
-        colMaxs = &sceneModel.GetColliderMaxs();
-    };
-
-    auto findGroundBelow = [&](float x, float z, float maxY) -> float {
-        float floorY = boundsMin.y;
-        if (colMins && colMaxs) {
-            for (size_t i = 0; i < colMins->size(); ++i) {
-                const auto& cMin = (*colMins)[i];
-                const auto& cMax = (*colMaxs)[i];
-                if (x < cMin.x || x > cMax.x) continue;
-                if (z < cMin.z || z > cMax.z) continue;
-                if (cMax.y <= maxY + 0.001f) {
-                    floorY = std::max(floorY, cMax.y);
-                }
+    std::string modelError;
+    int startLevel = 0;
+    if (argc > 1) {
+        std::string arg = argv[1];
+        if (arg.rfind("lvl", 0) == 0 && arg.size() > 3) {
+            try {
+                startLevel = std::max(0, std::stoi(arg.substr(3)) - 1); // lvl1 -> index 0
+            } catch (...) {
+                startLevel = 0;
             }
         }
-        return floorY;
-    };
+    }
 
-    auto spawnPlayerAtLevelStart = [&]() {
-        player.vel = glm::vec3(0.0f);
-        player.grounded = false;
-        // Default spawn near the left edge, above the level.
-        float desiredX = boundsMin.x + player.halfExtents.x + 1.0f;
-        float fallbackY = boundsMax.y + 5.0f;
-        float groundY = findGroundBelow(desiredX, levelMidZ, fallbackY);
-        glm::vec3 spawnPos(desiredX, groundY + player.halfExtents.y + 0.05f, levelMidZ);
-
-        // Try to land on the top of the left-most collider that overlaps our Z plane.
-        float bestDist = std::numeric_limits<float>::max();
-        const float skin = 0.05f;
-        if (colMins && colMaxs) {
-            for (size_t i = 0; i < colMins->size(); ++i) {
-                const auto& cMin = (*colMins)[i];
-                const auto& cMax = (*colMaxs)[i];
-                // Require overlap on Z for our locked plane.
-                if (levelMidZ + player.halfExtents.z < cMin.z || levelMidZ - player.halfExtents.z > cMax.z) {
-                    continue;
-                }
-                // X extent must fit the player.
-                float minX = cMin.x + player.halfExtents.x + skin;
-                float maxX = cMax.x - player.halfExtents.x - skin;
-                if (minX > maxX) {
-                    continue;
-                }
-                float clampedX = std::clamp(desiredX, minX, maxX);
-                float dist = std::abs(clampedX - desiredX);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    spawnPos.x = clampedX;
-                    spawnPos.y = cMax.y + player.halfExtents.y + skin;
-                }
-            }
-        }
-
-        player.pos = spawnPos;
-    };
-
-    auto tryLoadFromRoot = [&](Model& outModel, const std::filesystem::path& root) {
-        bool loaded = false;
-
-        // Preferred names
-        const auto gltfPreferred = root / "scene.gltf";
-        const auto glbPreferred = root / "scene.glb";
-        if (std::filesystem::exists(gltfPreferred)) {
-            loaded = outModel.LoadFromGlb(gltfPreferred, &modelError);  // supports .gltf/.glb
-        }
-        if (!loaded && std::filesystem::exists(glbPreferred)) {
-            loaded = outModel.LoadFromGlb(glbPreferred, &modelError);
-        }
-
-        // Fallback: load the first glTF/GLB we can find in this root.
-        if (!loaded) {
-            std::vector<std::filesystem::path> candidates;
-            for (const auto& entry : std::filesystem::directory_iterator(root)) {
-                if (!entry.is_regular_file()) continue;
-                auto ext = entry.path().extension().string();
-                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-                if (ext == ".gltf" || ext == ".glb") {
-                    candidates.push_back(entry.path());
-                }
-            }
-            std::sort(candidates.begin(), candidates.end());
-            for (const auto& c : candidates) {
-                loaded = outModel.LoadFromGlb(c, &modelError);
-                if (loaded) break;
-            }
-        }
-
-        return loaded;
-    };
-
-    auto loadLevel = [&](int levelIndex) {
-        if (levelIndex < 0 || levelIndex >= static_cast<int>(levelRoots.size())) {
-            return false;
-        }
-        Model newModel;
-        modelError.clear();
-
-        const auto& root = levelRoots[levelIndex];
-        bool loaded = tryLoadFromRoot(newModel, root);
-
-        // Legacy fallbacks to keep previous behavior if new layout is missing.
-        if (!loaded) {
-            if (std::filesystem::exists(fbxPath)) {
-                loaded = newModel.LoadFromFbx(fbxPath, &modelError);
-            }
-        }
-        if (!loaded) {
-            if (std::filesystem::exists(objPath)) {
-                loaded = newModel.LoadFromObj(objPath, &modelError);
-            }
-        }
-        if (!loaded) {
-            std::cerr << "Failed to load level index " << levelIndex << " from root "
-                      << root.string() << ": " << modelError << std::endl;
-            return false;
-        }
-
-        sceneModel.Destroy();
-        sceneModel = std::move(newModel);
-        currentLevel = levelIndex;
-        updateDerivedBounds();
-        applyColliderRefs();
-        spawnPlayerAtLevelStart();
-        size_t colliderCount = colMins ? colMins->size() : 0;
-        std::cout << "Loaded level " << levelIndex << " (" << levelRoots[levelIndex].string()
-                  << ") with " << colliderCount << " colliders.\n";
-
-        // Spawn a couple of placeholder enemies with patrol ranges.
-        enemies.clear();
-        auto addEnemy = [&](float startX, float endX) {
-            Enemy e;
-            e.rangeMin = std::min(startX, endX);
-            e.rangeMax = std::max(startX, endX);
-            e.pos = glm::vec3(0.5f * (e.rangeMin + e.rangeMax), boundsMax.y + 2.0f, levelMidZ);
-            float groundY = findGroundBelow(e.pos.x, e.pos.z, e.pos.y);
-            e.pos.y = groundY + e.halfExtents.y + 0.05f;
-            e.dir = 1.0f;
-            enemies.push_back(e);
-        };
-        float span = extent.x;
-        float leftStart = boundsMin.x + std::max(5.0f, span * 0.05f);
-        float leftEnd = leftStart + std::max(8.0f, span * 0.15f);
-        float midStart = boundsMin.x + span * 0.45f;
-        float midEnd = midStart + std::max(8.0f, span * 0.12f);
-        addEnemy(leftStart, leftEnd);
-        addEnemy(midStart, midEnd);
-        return true;
-    };
-
-    if (!loadLevel(0)) {
+    if (!levelManager.LoadLevel(startLevel, player, enemies, modelError)) {
         std::cerr << "Unable to load initial level." << std::endl;
         glfwDestroyWindow(window);
         glfwTerminate();
         return EXIT_FAILURE;
     }
+    camera.distance = levelManager.GetDiagonal() * 1.5f;
     glm::vec3 lightDir = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
     glm::vec3 lightColor(1.0f, 0.96f, 0.86f);
     // Moderate ambient lighting
@@ -483,6 +283,19 @@ int main(int argc, char** argv) {
     float jumpSpeed = 20.0f;
     float gravity = 50.0f;
 
+    // Camera / movement mode toggle (2D <-> 3D)
+    bool want3D = false;
+    float modeBlend = 0.0f; // 0 = 2D, 1 = 3D
+    bool prevToggleKey = false;
+
+    // 3D "shooter" camera state (yaw/pitch in radians).
+    float camYaw = 0.0f;              // yaw=0 => looking +X
+    float camPitch = glm::radians(-18.0f);
+    bool mouseCaptured = false;
+    bool firstMouse = true;
+    double lastMouseX = 0.0;
+    double lastMouseY = 0.0;
+
     while (!glfwWindowShouldClose(window)) {
         float currentTime = static_cast<float>(glfwGetTime());
         float deltaTime = currentTime - previousTime;
@@ -501,41 +314,136 @@ int main(int argc, char** argv) {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_DEPTH_TEST);
 
-        // Side-view camera locked to player.
-        glm::vec3 cameraPos = player.pos + glm::vec3(0.0f, 10.0f, 25.0f); // side view along Z
-        glm::vec3 lookTarget = player.pos;
+        // Toggle camera/movement mode.
+        bool toggleKey = glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS;
+        if (toggleKey && !prevToggleKey) {
+            want3D = !want3D;
+            // When returning to 2D, snap player back onto the current rail.
+            if (!want3D) {
+                player.pos.z = levelManager.GetLevelMidZ();
+                player.vel.z = 0.0f;
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                mouseCaptured = false;
+            }
+            if (want3D) {
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                mouseCaptured = true;
+                firstMouse = true;
+            }
+        }
+        prevToggleKey = toggleKey;
+
+        // Smooth blend between modes (camera rotates smoothly).
+        float targetBlend = want3D ? 1.0f : 0.0f;
+        float blendSpeed = 4.0f; // larger = faster transition
+        modeBlend = want3D ? 1.0f : 0.0f;
+        bool is3DView = modeBlend >= 0.5f;
+
+        // Camera setup.
+        // 2D: ortho side view. 3D: third-person shooter camera (mouse look).
+        constexpr float kOrthoHalfHeight = 18.0f;
+        glm::vec3 lookTarget2D = player.pos + glm::vec3(0.0f, 2.0f, 0.0f);
+        glm::vec3 cameraPos2D = lookTarget2D + glm::vec3(0.0f, 0.0f, 60.0f);
+
+        // Update mouse look in 3D mode.
+        if (want3D && mouseCaptured) {
+            double mx = 0.0, my = 0.0;
+            glfwGetCursorPos(window, &mx, &my);
+            if (firstMouse) {
+                lastMouseX = mx;
+                lastMouseY = my;
+                firstMouse = false;
+            }
+            double dx = mx - lastMouseX;
+            double dy = my - lastMouseY;
+            lastMouseX = mx;
+            lastMouseY = my;
+
+            const float sens = 0.00025f;
+            camYaw += static_cast<float>(dx) * sens;
+            camPitch -= static_cast<float>(dy) * sens;
+            camPitch = std::clamp(camPitch, glm::radians(-75.0f), glm::radians(75.0f));
+        }
+
+        // 3D camera (first-person): at the player's "eye", looking along mouse-look forward.
+        glm::vec3 forward3D(
+            std::cos(camPitch) * std::cos(camYaw),
+            std::sin(camPitch),
+            std::cos(camPitch) * std::sin(camYaw)
+        );
+        forward3D = glm::normalize(forward3D);
+        constexpr float kEyeHeight = 2.0f;
+        constexpr float kEyeForward = 0.25f; // small push forward to reduce clipping into the player collider
+        glm::vec3 cameraPos3D = player.pos + glm::vec3(0.0f, kEyeHeight, 0.0f) + forward3D * kEyeForward;
+        glm::vec3 lookTarget3D = cameraPos3D + forward3D;
+
+        auto lerp3 = [](const glm::vec3& a, const glm::vec3& b, float t) { return a + (b - a) * t; };
+        float t = modeBlend;
+        glm::vec3 lookTarget = lerp3(lookTarget2D, lookTarget3D, t);
+        glm::vec3 cameraPos = lerp3(cameraPos2D, cameraPos3D, t);
         glm::mat4 view = glm::lookAt(cameraPos, lookTarget, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), aspect, 0.1f, 500.0f);
+
+        glm::mat4 projection;
+        if (!is3DView) {
+            float orthoHalfWidth = kOrthoHalfHeight * aspect;
+            projection = glm::ortho(-orthoHalfWidth, orthoHalfWidth,
+                                    -kOrthoHalfHeight, kOrthoHalfHeight,
+                                    0.1f, 500.0f);
+        } else {
+            projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
+        }
 
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
 
-        // Player input & physics (side-scroller: lock Z, only X movement)
+        // Player input & physics:
+        // - 2D mode: A/D only, Z locked to the rail.
+        // - 3D mode: third-person shooter controls (WASD relative to camera).
         float moveInputX = 0.0f;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) moveInputX -= 1.0f;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) moveInputX += 1.0f;
-        if (moveInputX != 0.0f) {
-            moveInputX = (moveInputX > 0.0f) ? 1.0f : -1.0f;
+        float moveInputZ = 0.0f;
+        if (!want3D) {
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) moveInputX -= 1.0f;
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) moveInputX += 1.0f;
+        } else {
+            // Build movement direction from camera basis on the ground plane.
+            glm::vec3 up(0.0f, 1.0f, 0.0f);
+            glm::vec3 right3D = glm::normalize(glm::cross(forward3D, up)); // yaw=0 -> right is +Z
+            glm::vec3 fwdFlat = glm::normalize(glm::vec3(forward3D.x, 0.0f, forward3D.z));
+            glm::vec3 rightFlat = glm::normalize(glm::vec3(right3D.x, 0.0f, right3D.z));
+
+            glm::vec3 moveDir(0.0f);
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) moveDir += fwdFlat;
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) moveDir -= fwdFlat;
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) moveDir += rightFlat;
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) moveDir -= rightFlat;
+            if (glm::length(moveDir) > 0.001f) {
+                moveDir = glm::normalize(moveDir);
+                moveInputX = moveDir.x;
+                moveInputZ = moveDir.z;
+            }
         }
         bool jumpPressed = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
         player.Update(deltaTime,
                       moveInputX,
+                      moveInputZ,
                       jumpPressed,
                       moveSpeed,
                       jumpSpeed,
                       gravity,
-                      levelMidZ,
-                      colMins,
-                      colMaxs,
-                      boundsMin.y,
+                      !want3D,
+                      levelManager.GetLevelMidZ(),
+                      levelManager.GetColliderMins(),
+                      levelManager.GetColliderMaxs(),
+                      levelManager.GetBoundsMin().y,
                       SKIN,
                       MAX_PENETRATION);
         glm::vec3 pMin = player.pos - player.halfExtents;
         glm::vec3 pMax = player.pos + player.halfExtents;
 
+        auto groundFn = [&](float x, float z, float maxY) { return levelManager.FindGroundBelow(x, z, maxY); };
         // Update enemies (simple patrol along X, locked to level Z, stick to ground or fall if no support).
         for (auto& e : enemies) {
-            e.Update(deltaTime, gravity, levelMidZ, SKIN, colMins, colMaxs, findGroundBelow);
+            e.Update(deltaTime, gravity, levelManager.GetLevelMidZ(), SKIN, levelManager.GetColliderMins(), levelManager.GetColliderMaxs(), groundFn);
         }
 
         // Player/enemy interaction: stomp to kill, side contact kills player.
@@ -573,7 +481,9 @@ int main(int argc, char** argv) {
         }
 
         if (playerDied) {
-            spawnPlayerAtLevelStart();
+            // Reload current level to respawn player and reset enemies.
+            levelManager.LoadLevel(levelManager.GetCurrentLevel(), player, enemies, modelError);
+            camera.distance = levelManager.GetDiagonal() * 1.5f;
             continue;
         }
         if (!enemiesToRemove.empty()) {
@@ -587,16 +497,17 @@ int main(int argc, char** argv) {
         }
 
         // Level transition: spherical trigger near the end of the level.
-        float distToFlag = glm::length(player.pos - flagTriggerCenter);
-        if (distToFlag <= flagTriggerRadius) {
-            int nextLevel = currentLevel + 1;
-            if (nextLevel < static_cast<int>(levelRoots.size())) {
+        float distToFlag = glm::length(player.pos - levelManager.GetFlagTriggerCenter());
+        if (distToFlag <= levelManager.GetFlagTriggerRadius()) {
+            int nextLevel = levelManager.GetCurrentLevel() + 1;
+            if (nextLevel < levelManager.GetLevelCount()) {
                 std::cout << "Reached flag. Loading level " << nextLevel
-                          << " (trigger center " << flagTriggerCenter.x << "," << flagTriggerCenter.y << "," << flagTriggerCenter.z
-                          << " radius " << flagTriggerRadius
+                          << " (trigger center " << levelManager.GetFlagTriggerCenter().x << "," << levelManager.GetFlagTriggerCenter().y << "," << levelManager.GetFlagTriggerCenter().z
+                          << " radius " << levelManager.GetFlagTriggerRadius()
                           << " player " << player.pos.x << "," << player.pos.y << "," << player.pos.z
                           << " dist " << distToFlag << ")...\n";
-                if (loadLevel(nextLevel)) {
+                if (levelManager.LoadLevel(nextLevel, player, enemies, modelError)) {
+                    camera.distance = levelManager.GetDiagonal() * 1.5f;
                     // Start next frame with new level state.
                     glfwPollEvents();
                     continue;
@@ -618,21 +529,23 @@ int main(int argc, char** argv) {
         shaderProgram.SetInt("uBaseColorMap", 0);
         shaderProgram.SetInt("uMetalRoughMap", 1);
 
-        sceneModel.Draw(shaderProgram);
+        levelManager.DrawScene(shaderProgram);
 
-        // Draw player cube
-        glm::mat4 playerModel = glm::translate(glm::mat4(1.0f), player.pos) * glm::scale(glm::mat4(1.0f), player.halfExtents);
-        glm::mat3 playerNormal = glm::mat3(glm::transpose(glm::inverse(playerModel)));
-        shaderProgram.SetMat4("uModel", playerModel);
-        shaderProgram.SetMat3("uNormalMatrix", playerNormal);
-        shaderProgram.SetVec4("uMaterial.baseColorFactor", glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
-        shaderProgram.SetFloat("uMaterial.metallic", 0.0f);
-        shaderProgram.SetFloat("uMaterial.roughness", 1.0f);
-        shaderProgram.SetInt("uMaterial.hasBaseColorTex", 0);
-        shaderProgram.SetInt("uMaterial.hasMetalRoughTex", 0);
-        glBindVertexArray(playerVAO);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        // Draw player cube (skip in 3D FPV to avoid seeing inside your own model)
+        if (!want3D) {
+            glm::mat4 playerModel = glm::translate(glm::mat4(1.0f), player.pos) * glm::scale(glm::mat4(1.0f), player.halfExtents);
+            glm::mat3 playerNormal = glm::mat3(glm::transpose(glm::inverse(playerModel)));
+            shaderProgram.SetMat4("uModel", playerModel);
+            shaderProgram.SetMat3("uNormalMatrix", playerNormal);
+            shaderProgram.SetVec4("uMaterial.baseColorFactor", glm::vec4(0.2f, 0.8f, 0.3f, 1.0f));
+            shaderProgram.SetFloat("uMaterial.metallic", 0.0f);
+            shaderProgram.SetFloat("uMaterial.roughness", 1.0f);
+            shaderProgram.SetInt("uMaterial.hasBaseColorTex", 0);
+            shaderProgram.SetInt("uMaterial.hasMetalRoughTex", 0);
+            glBindVertexArray(playerVAO);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+        }
 
         // Draw enemies
         for (const auto& e : enemies) {
@@ -654,7 +567,6 @@ int main(int argc, char** argv) {
         glfwPollEvents();
     }
 
-    sceneModel.Destroy();
     glfwDestroyWindow(window);
     glfwTerminate();
     return EXIT_SUCCESS;

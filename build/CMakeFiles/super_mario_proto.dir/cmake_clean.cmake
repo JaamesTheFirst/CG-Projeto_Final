@@ -3,6 +3,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o.d"
   "CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o"
   "CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o.d"
+  "CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o"
+  "CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o.d"
   "CMakeFiles/super_mario_proto.dir/src/Model.cpp.o"
   "CMakeFiles/super_mario_proto.dir/src/Model.cpp.o.d"
   "CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o"

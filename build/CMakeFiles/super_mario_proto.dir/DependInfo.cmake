@@ -10,6 +10,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/tiago/CG-Projeto_Final/external/cgltf/cgltf.c" "CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o" "gcc" "CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o.d"
   "/home/tiago/CG-Projeto_Final/src/Enemy.cpp" "CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o.d"
+  "/home/tiago/CG-Projeto_Final/src/LevelManager.cpp" "CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o.d"
   "/home/tiago/CG-Projeto_Final/src/Model.cpp" "CMakeFiles/super_mario_proto.dir/src/Model.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/Model.cpp.o.d"
   "/home/tiago/CG-Projeto_Final/src/ObjLoader.cpp" "CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o.d"
   "/home/tiago/CG-Projeto_Final/src/Player.cpp" "CMakeFiles/super_mario_proto.dir/src/Player.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/Player.cpp.o.d"

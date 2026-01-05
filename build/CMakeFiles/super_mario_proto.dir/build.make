@@ -83,10 +83,24 @@ CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/tiago/CG-Projeto_Final/src/Enemy.cpp -o CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.s
 
+CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
+CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o: /home/tiago/CG-Projeto_Final/src/LevelManager.cpp
+CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o -c /home/tiago/CG-Projeto_Final/src/LevelManager.cpp
+
+CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/tiago/CG-Projeto_Final/src/LevelManager.cpp > CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.i
+
+CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/tiago/CG-Projeto_Final/src/LevelManager.cpp -o CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.s
+
 CMakeFiles/super_mario_proto.dir/src/Model.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/src/Model.cpp.o: /home/tiago/CG-Projeto_Final/src/Model.cpp
 CMakeFiles/super_mario_proto.dir/src/Model.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/super_mario_proto.dir/src/Model.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/super_mario_proto.dir/src/Model.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/Model.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/Model.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/Model.cpp.o -c /home/tiago/CG-Projeto_Final/src/Model.cpp
 
 CMakeFiles/super_mario_proto.dir/src/Model.cpp.i: cmake_force
@@ -100,7 +114,7 @@ CMakeFiles/super_mario_proto.dir/src/Model.cpp.s: cmake_force
 CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o: /home/tiago/CG-Projeto_Final/src/ObjLoader.cpp
 CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o -c /home/tiago/CG-Projeto_Final/src/ObjLoader.cpp
 
 CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.i: cmake_force
@@ -114,7 +128,7 @@ CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.s: cmake_force
 CMakeFiles/super_mario_proto.dir/src/Player.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/src/Player.cpp.o: /home/tiago/CG-Projeto_Final/src/Player.cpp
 CMakeFiles/super_mario_proto.dir/src/Player.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/super_mario_proto.dir/src/Player.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/super_mario_proto.dir/src/Player.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/Player.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/Player.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/Player.cpp.o -c /home/tiago/CG-Projeto_Final/src/Player.cpp
 
 CMakeFiles/super_mario_proto.dir/src/Player.cpp.i: cmake_force
@@ -128,7 +142,7 @@ CMakeFiles/super_mario_proto.dir/src/Player.cpp.s: cmake_force
 CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o: /home/tiago/CG-Projeto_Final/src/ShaderProgram.cpp
 CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o -c /home/tiago/CG-Projeto_Final/src/ShaderProgram.cpp
 
 CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.i: cmake_force
@@ -142,7 +156,7 @@ CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.s: cmake_force
 CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o: /home/tiago/CG-Projeto_Final/src/TextureLoader.cpp
 CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o -c /home/tiago/CG-Projeto_Final/src/TextureLoader.cpp
 
 CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.i: cmake_force
@@ -156,7 +170,7 @@ CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.s: cmake_force
 CMakeFiles/super_mario_proto.dir/src/main.cpp.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/src/main.cpp.o: /home/tiago/CG-Projeto_Final/src/main.cpp
 CMakeFiles/super_mario_proto.dir/src/main.cpp.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building CXX object CMakeFiles/super_mario_proto.dir/src/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/super_mario_proto.dir/src/main.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/src/main.cpp.o -MF CMakeFiles/super_mario_proto.dir/src/main.cpp.o.d -o CMakeFiles/super_mario_proto.dir/src/main.cpp.o -c /home/tiago/CG-Projeto_Final/src/main.cpp
 
 CMakeFiles/super_mario_proto.dir/src/main.cpp.i: cmake_force
@@ -170,7 +184,7 @@ CMakeFiles/super_mario_proto.dir/src/main.cpp.s: cmake_force
 CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o: CMakeFiles/super_mario_proto.dir/flags.make
 CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o: /home/tiago/CG-Projeto_Final/external/cgltf/cgltf.c
 CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o: CMakeFiles/super_mario_proto.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building CXX object CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building CXX object CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o -MF CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o.d -o CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.o -c /home/tiago/CG-Projeto_Final/external/cgltf/cgltf.c
 
 CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.i: cmake_force
@@ -184,6 +198,7 @@ CMakeFiles/super_mario_proto.dir/external/cgltf/cgltf.c.s: cmake_force
 # Object files for target super_mario_proto
 super_mario_proto_OBJECTS = \
 "CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o" \
+"CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o" \
 "CMakeFiles/super_mario_proto.dir/src/Model.cpp.o" \
 "CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o" \
 "CMakeFiles/super_mario_proto.dir/src/Player.cpp.o" \
@@ -196,6 +211,7 @@ super_mario_proto_OBJECTS = \
 super_mario_proto_EXTERNAL_OBJECTS =
 
 super_mario_proto: CMakeFiles/super_mario_proto.dir/src/Enemy.cpp.o
+super_mario_proto: CMakeFiles/super_mario_proto.dir/src/LevelManager.cpp.o
 super_mario_proto: CMakeFiles/super_mario_proto.dir/src/Model.cpp.o
 super_mario_proto: CMakeFiles/super_mario_proto.dir/src/ObjLoader.cpp.o
 super_mario_proto: CMakeFiles/super_mario_proto.dir/src/Player.cpp.o
@@ -212,7 +228,7 @@ super_mario_proto: /usr/lib/x86_64-linux-gnu/libGLX.so
 super_mario_proto: /usr/lib/x86_64-linux-gnu/libOpenGL.so
 super_mario_proto: /usr/lib/x86_64-linux-gnu/libz.so
 super_mario_proto: CMakeFiles/super_mario_proto.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking CXX executable super_mario_proto"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/tiago/CG-Projeto_Final/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking CXX executable super_mario_proto"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/super_mario_proto.dir/link.txt --verbose=$(VERBOSE)
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --blue --bold "Copying assets directory"
 	/usr/bin/cmake -E copy_directory /home/tiago/CG-Projeto_Final/assets /home/tiago/CG-Projeto_Final/build/assets
