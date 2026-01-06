@@ -169,7 +169,9 @@ int main(int argc, char** argv) {
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, FrameBufferSizeCallback);
-    glfwSwapInterval(1);
+    // VSync adds noticeable input latency, especially in FPS-style camera mode.
+    // We default to off; you can re-enable it later if you prefer smoother frame pacing.
+    glfwSwapInterval(0);
 
     if (!InitGLEW()) {
         glfwDestroyWindow(window);
@@ -293,8 +295,6 @@ int main(int argc, char** argv) {
     float camPitch = glm::radians(-18.0f);
     bool mouseCaptured = false;
     bool firstMouse = true;
-    double lastMouseX = 0.0;
-    double lastMouseY = 0.0;
 
     while (!glfwWindowShouldClose(window)) {
         float currentTime = static_cast<float>(glfwGetTime());
@@ -333,11 +333,18 @@ int main(int argc, char** argv) {
         }
         prevToggleKey = toggleKey;
 
-        // Smooth blend between modes (camera rotates smoothly).
-        float targetBlend = want3D ? 1.0f : 0.0f;
-        float blendSpeed = 4.0f; // larger = faster transition
-        modeBlend = want3D ? 1.0f : 0.0f;
-        bool is3DView = modeBlend >= 0.5f;
+        // Camera transition ("party trick"):
+        // Smoothly blend camera + projection between 2D and 3D, but keep controls immediate.
+        {
+            float target = want3D ? 1.0f : 0.0f;
+            // Roughly ~0.15-0.25s feel depending on frame rate.
+            const float blendSpeed = 10.0f;
+            float k = 1.0f - std::exp(-blendSpeed * deltaTime);
+            modeBlend = modeBlend + (target - modeBlend) * k;
+            if (std::abs(target - modeBlend) < 1e-4f) {
+                modeBlend = target;
+            }
+        }
 
         // Camera setup.
         // 2D: ortho side view. 3D: third-person shooter camera (mouse look).
@@ -345,19 +352,37 @@ int main(int argc, char** argv) {
         glm::vec3 lookTarget2D = player.pos + glm::vec3(0.0f, 2.0f, 0.0f);
         glm::vec3 cameraPos2D = lookTarget2D + glm::vec3(0.0f, 0.0f, 60.0f);
 
-        // Update mouse look in 3D mode.
+        // Update mouse look in 3D mode (FPS-style: measure delta from window center, then recenter).
         if (want3D && mouseCaptured) {
             double mx = 0.0, my = 0.0;
             glfwGetCursorPos(window, &mx, &my);
             if (firstMouse) {
-                lastMouseX = mx;
-                lastMouseY = my;
+                // Recenter on first frame to avoid a huge jump.
+                int winW = 0, winH = 0;
+                glfwGetWindowSize(window, &winW, &winH);
+                double cx = winW * 0.5;
+                double cy = winH * 0.5;
+                glfwSetCursorPos(window, cx, cy);
                 firstMouse = false;
+                mx = cx;
+                my = cy;
             }
-            double dx = mx - lastMouseX;
-            double dy = my - lastMouseY;
-            lastMouseX = mx;
-            lastMouseY = my;
+
+            int winW = 0, winH = 0;
+            glfwGetWindowSize(window, &winW, &winH);
+            double cx = winW * 0.5;
+            double cy = winH * 0.5;
+
+            double dx = mx - cx;
+            double dy = my - cy;
+
+            // Recenter every frame so deltas are linear and never depend on cursor reaching screen edges.
+            glfwSetCursorPos(window, cx, cy);
+
+            // Clamp spikes (prevents "camera goes everywhere" on focus changes or large jumps).
+            const double kMaxDelta = 300.0;
+            dx = std::clamp(dx, -kMaxDelta, kMaxDelta);
+            dy = std::clamp(dy, -kMaxDelta, kMaxDelta);
 
             const float sens = 0.00025f;
             camYaw += static_cast<float>(dx) * sens;
@@ -365,33 +390,42 @@ int main(int argc, char** argv) {
             camPitch = std::clamp(camPitch, glm::radians(-75.0f), glm::radians(75.0f));
         }
 
-        // 3D camera (first-person): at the player's "eye", looking along mouse-look forward.
+        // 3D camera (third-person over-the-shoulder): slightly above/behind the player,
+        // still driven by the same mouse-look forward vector.
         glm::vec3 forward3D(
             std::cos(camPitch) * std::cos(camYaw),
             std::sin(camPitch),
             std::cos(camPitch) * std::sin(camYaw)
         );
         forward3D = glm::normalize(forward3D);
-        constexpr float kEyeHeight = 2.0f;
-        constexpr float kEyeForward = 0.25f; // small push forward to reduce clipping into the player collider
-        glm::vec3 cameraPos3D = player.pos + glm::vec3(0.0f, kEyeHeight, 0.0f) + forward3D * kEyeForward;
-        glm::vec3 lookTarget3D = cameraPos3D + forward3D;
+        glm::vec3 up(0.0f, 1.0f, 0.0f);
+        glm::vec3 right3D = glm::normalize(glm::cross(forward3D, up));
+        constexpr float kLookHeight = 2.0f;
+        constexpr float kLookAhead = 6.0f;
+        constexpr float kCamBack = 6.0f;
+        constexpr float kCamUp = 3.0f;
+        constexpr float kShoulder = 1.0f;
+        glm::vec3 lookTarget3D = player.pos + glm::vec3(0.0f, kLookHeight, 0.0f) + forward3D * kLookAhead;
+        glm::vec3 cameraPos3D = (player.pos + glm::vec3(0.0f, kLookHeight, 0.0f))
+                                - forward3D * kCamBack
+                                + glm::vec3(0.0f, kCamUp, 0.0f)
+                                + right3D * kShoulder;
 
-        auto lerp3 = [](const glm::vec3& a, const glm::vec3& b, float t) { return a + (b - a) * t; };
-        float t = modeBlend;
-        glm::vec3 lookTarget = lerp3(lookTarget2D, lookTarget3D, t);
-        glm::vec3 cameraPos = lerp3(cameraPos2D, cameraPos3D, t);
+        float t = std::clamp(modeBlend, 0.0f, 1.0f);
+        // Smoothstep so it eases in/out a bit (feels more like a "rotate into 3D" trick).
+        float tSmooth = t * t * (3.0f - 2.0f * t);
+        glm::vec3 lookTarget = glm::mix(lookTarget2D, lookTarget3D, tSmooth);
+        glm::vec3 cameraPos = glm::mix(cameraPos2D, cameraPos3D, tSmooth);
         glm::mat4 view = glm::lookAt(cameraPos, lookTarget, glm::vec3(0.0f, 1.0f, 0.0f));
 
-        glm::mat4 projection;
-        if (!is3DView) {
-            float orthoHalfWidth = kOrthoHalfHeight * aspect;
-            projection = glm::ortho(-orthoHalfWidth, orthoHalfWidth,
-                                    -kOrthoHalfHeight, kOrthoHalfHeight,
-                                    0.1f, 500.0f);
-        } else {
-            projection = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
-        }
+        float orthoHalfWidth = kOrthoHalfHeight * aspect;
+        glm::mat4 orthoProj = glm::ortho(-orthoHalfWidth, orthoHalfWidth,
+                                         -kOrthoHalfHeight, kOrthoHalfHeight,
+                                         0.1f, 500.0f);
+        glm::mat4 perspProj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 500.0f);
+        // Matrix mix isn't available in all GLM versions; lerp manually.
+        // Not physically "correct", but looks great for a stylized transition.
+        glm::mat4 projection = orthoProj * (1.0f - tSmooth) + perspProj * tSmooth;
 
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
@@ -531,8 +565,11 @@ int main(int argc, char** argv) {
 
         levelManager.DrawScene(shaderProgram);
 
-        // Draw player cube (skip in 3D FPV to avoid seeing inside your own model)
-        if (!want3D) {
+        // Draw player cube (in 2D and 3D third-person)
+        if (true) {
+            // The debug cube indices have mixed winding for some faces; with back-face culling on,
+            // the cube can look "transparent" from certain angles. Disable culling just for it.
+            glDisable(GL_CULL_FACE);
             glm::mat4 playerModel = glm::translate(glm::mat4(1.0f), player.pos) * glm::scale(glm::mat4(1.0f), player.halfExtents);
             glm::mat3 playerNormal = glm::mat3(glm::transpose(glm::inverse(playerModel)));
             shaderProgram.SetMat4("uModel", playerModel);
@@ -545,10 +582,12 @@ int main(int argc, char** argv) {
             glBindVertexArray(playerVAO);
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
+            glEnable(GL_CULL_FACE);
         }
 
         // Draw enemies
         for (const auto& e : enemies) {
+            glDisable(GL_CULL_FACE);
             glm::mat4 enemyModel = glm::translate(glm::mat4(1.0f), e.pos) * glm::scale(glm::mat4(1.0f), e.halfExtents);
             glm::mat3 enemyNormal = glm::mat3(glm::transpose(glm::inverse(enemyModel)));
             shaderProgram.SetMat4("uModel", enemyModel);
@@ -561,6 +600,7 @@ int main(int argc, char** argv) {
             glBindVertexArray(playerVAO);
             glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
+            glEnable(GL_CULL_FACE);
         }
 
         glfwSwapBuffers(window);
