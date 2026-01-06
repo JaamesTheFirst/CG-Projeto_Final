@@ -1,13 +1,3 @@
-.PHONY: all configure build run clean distclean help
-
-# Simple wrapper Makefile (required for course submission).
-# Uses CMake underneath, but provides the expected:
-#   - compile/link: `make` / `make build`
-#   - run:          `make run` (optionally: `make run ARGS="lvl2"`)
-#
-# Notes:
-# - Build outputs go to ./build
-# - The executable is `super_mario_proto` (see CMakeLists.txt)
 
 BUILD_DIR ?= build
 TARGET ?= super_mario_proto

@@ -1,3 +1,6 @@
+
+Aque esta uma explicacao de como foi resolvido o problema de spawning. Para resolver este problema tive de recorrer a inteligencia artificial, tanto atraves de pesquisa individual com modelos como atraves de funcoes do autocomplete do IDE utilizado.
+
 # Spawn Plane Selection (Why lvl2 Spawn Was Hard, and How We Fixed It)
 
 ## Problem Summary
@@ -102,13 +105,3 @@ This method is robust because it:
 - **Depth lock**: `src/Player.cpp` (the `pos.z = levelMidZ` line)
 - **Spawn sampling + histogram**: `src/LevelManager.cpp` in `LevelManager::SpawnPlayerAtLevelStart`
 - **Ground queries**: `src/LevelManager.cpp` in `LevelManager::FindGroundBelow`
-
-## Notes / Limitations
-
-- This is a practical hack for a course project: effective, simple, and data-driven.
-- A “proper” engine might instead:
-  - generate simplified colliders (one per platform)
-  - tag a spawn point in the level file
-  - use a navigation mesh / walkable surface detection
-
-
