@@ -119,6 +119,7 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
     camera->pitch = std::clamp(camera->pitch, -1.2f, 1.2f);
 }
 
+
 // Tries several candidate paths to locate the assets directory. Returns the first existing dir.
 std::filesystem::path FindAssetsRoot(const char* executablePath) {
     std::vector<std::filesystem::path> candidates;
@@ -295,6 +296,8 @@ int main(int argc, char** argv) {
     float camPitch = glm::radians(-18.0f);
     bool mouseCaptured = false;
     bool firstMouse = true;
+    bool skipNextMouseFrame = false;
+    double lastMouseX = 0.0, lastMouseY = 0.0;
 
     while (!glfwWindowShouldClose(window)) {
         float currentTime = static_cast<float>(glfwGetTime());
@@ -326,9 +329,14 @@ int main(int argc, char** argv) {
                 mouseCaptured = false;
             }
             if (want3D) {
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                // Use HIDDEN instead of DISABLED - works better in WSL
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
                 mouseCaptured = true;
                 firstMouse = true;
+                // Center cursor on mode switch
+                int winW, winH;
+                glfwGetWindowSize(window, &winW, &winH);
+                glfwSetCursorPos(window, winW / 2.0, winH / 2.0);
             }
         }
         prevToggleKey = toggleKey;
@@ -352,42 +360,65 @@ int main(int argc, char** argv) {
         glm::vec3 lookTarget2D = player.pos + glm::vec3(0.0f, 2.0f, 0.0f);
         glm::vec3 cameraPos2D = lookTarget2D + glm::vec3(0.0f, 0.0f, 60.0f);
 
-        // Update mouse look in 3D mode (FPS-style: measure delta from window center, then recenter).
+        // Update mouse look in 3D mode
+        // Using HIDDEN cursor + manual edge wrapping (works better in WSL than DISABLED)
         if (want3D && mouseCaptured) {
-            double mx = 0.0, my = 0.0;
+            double mx, my;
             glfwGetCursorPos(window, &mx, &my);
+
+            int winW, winH;
+            glfwGetWindowSize(window, &winW, &winH);
+            double cx = winW / 2.0;
+            double cy = winH / 2.0;
+
             if (firstMouse) {
-                // Recenter on first frame to avoid a huge jump.
-                int winW = 0, winH = 0;
-                glfwGetWindowSize(window, &winW, &winH);
-                double cx = winW * 0.5;
-                double cy = winH * 0.5;
+                lastMouseX = cx;
+                lastMouseY = cy;
                 glfwSetCursorPos(window, cx, cy);
                 firstMouse = false;
-                mx = cx;
-                my = cy;
+                skipNextMouseFrame = true;
+            } else if (skipNextMouseFrame) {
+                // Skip this frame's delta (we just initialized)
+                lastMouseX = mx;
+                lastMouseY = my;
+                skipNextMouseFrame = false;
+            } else {
+                double dx = mx - lastMouseX;
+                double dy = my - lastMouseY;
+
+                // Clamp deltas to reasonable values (prevents WSL weirdness)
+                const double maxDelta = 50.0;
+                dx = std::clamp(dx, -maxDelta, maxDelta);
+                dy = std::clamp(dy, -maxDelta, maxDelta);
+
+                // Check if cursor is getting close to edges
+                const double edgeMargin = 200.0;  // Larger margin = recenter earlier
+                bool nearEdgeX = (mx < edgeMargin || mx > winW - edgeMargin);
+                bool nearEdgeY = (my < edgeMargin || my > winH - edgeMargin);
+
+                // Reduce rotation speed when near edge (prevents "burst" feeling)
+                if (nearEdgeX) dx *= 0.5;
+                if (nearEdgeY) dy *= 0.5;
+
+                // Apply rotation
+                const float sens = 0.003f;
+                camYaw += static_cast<float>(dx) * sens;
+                camPitch -= static_cast<float>(dy) * sens;
+                camPitch = std::clamp(camPitch, glm::radians(-89.0f), glm::radians(89.0f));
+
+                // Update last position
+                lastMouseX = mx;
+                lastMouseY = my;
+
+                // Recenter the affected axis
+                if (nearEdgeX || nearEdgeY) {
+                    double newX = nearEdgeX ? cx : mx;
+                    double newY = nearEdgeY ? cy : my;
+                    glfwSetCursorPos(window, newX, newY);
+                    if (nearEdgeX) lastMouseX = cx;
+                    if (nearEdgeY) lastMouseY = cy;
+                }
             }
-
-            int winW = 0, winH = 0;
-            glfwGetWindowSize(window, &winW, &winH);
-            double cx = winW * 0.5;
-            double cy = winH * 0.5;
-
-            double dx = mx - cx;
-            double dy = my - cy;
-
-            // Recenter every frame so deltas are linear and never depend on cursor reaching screen edges.
-            glfwSetCursorPos(window, cx, cy);
-
-            // Clamp spikes (prevents "camera goes everywhere" on focus changes or large jumps).
-            const double kMaxDelta = 300.0;
-            dx = std::clamp(dx, -kMaxDelta, kMaxDelta);
-            dy = std::clamp(dy, -kMaxDelta, kMaxDelta);
-
-            const float sens = 0.00025f;
-            camYaw += static_cast<float>(dx) * sens;
-            camPitch -= static_cast<float>(dy) * sens;
-            camPitch = std::clamp(camPitch, glm::radians(-75.0f), glm::radians(75.0f));
         }
 
         // 3D camera (third-person over-the-shoulder): slightly above/behind the player,
