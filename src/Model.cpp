@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <cstdlib>
 #include <cmath>
 #include <string>
 #include <unordered_map>
@@ -189,19 +190,92 @@ bool Model::LoadFromObj(const std::filesystem::path& objPath, std::string* error
 namespace {
 
 bool LoadCgltfFile(const std::filesystem::path& path, cgltf_data*& outData, std::string* error) {
+    if (!std::filesystem::exists(path)) {
+        if (error) {
+            *error = "File does not exist: " + path.string();
+        }
+        return false;
+    }
+    
+    std::filesystem::path absolutePath = std::filesystem::absolute(path);
+    std::string pathStr = absolutePath.string();
+    
     cgltf_options options{};
-    cgltf_result result = cgltf_parse_file(&options, path.string().c_str(), &outData);
+    cgltf_result result = cgltf_parse_file(&options, pathStr.c_str(), &outData);
     if (result != cgltf_result_success) {
         if (error) {
-            *error = "Failed to parse glTF/GLB: " + std::to_string(result);
+            const char* msg = "Unknown error";
+            switch (result) {
+                case cgltf_result_data_too_short: msg = "Data too short"; break;
+                case cgltf_result_unknown_format: msg = "Unknown format"; break;
+                case cgltf_result_invalid_json: msg = "Invalid JSON"; break;
+                case cgltf_result_invalid_gltf: msg = "Invalid glTF"; break;
+                case cgltf_result_invalid_options: msg = "Invalid options"; break;
+                case cgltf_result_file_not_found: msg = "File not found"; break;
+                case cgltf_result_io_error: msg = "IO error"; break;
+                case cgltf_result_out_of_memory: msg = "Out of memory"; break;
+                default: break;
+            }
+            *error = "Failed to parse glTF/GLB (" + std::string(msg) + "): " + std::to_string(result);
         }
         return false;
     }
 
-    result = cgltf_load_buffers(&options, outData, path.string().c_str());
+    result = cgltf_load_buffers(&options, outData, pathStr.c_str());
+    if (result == cgltf_result_file_not_found) {
+        std::filesystem::path gltfDir = std::filesystem::path(pathStr).parent_path();
+        std::filesystem::path sceneBin = gltfDir / "scene.bin";
+        
+        if (std::filesystem::exists(sceneBin)) {
+            for (cgltf_size i = 0; i < outData->buffers_count; ++i) {
+                if (outData->buffers[i].uri && !outData->buffers[i].data) {
+                    std::filesystem::path expectedPath = gltfDir / outData->buffers[i].uri;
+                    if (!std::filesystem::exists(expectedPath) && std::filesystem::exists(sceneBin)) {
+                        std::ifstream file(sceneBin, std::ios::binary | std::ios::ate);
+                        if (file.is_open()) {
+                            std::streamsize size = file.tellg();
+                            if (size >= static_cast<std::streamsize>(outData->buffers[i].size)) {
+                                file.seekg(0, std::ios::beg);
+                                void* bufferData = std::malloc(outData->buffers[i].size);
+                                if (bufferData && file.read(static_cast<char*>(bufferData), outData->buffers[i].size)) {
+                                    outData->buffers[i].data = bufferData;
+                                    outData->buffers[i].data_free_method = cgltf_data_free_method_memory_free;
+                                    result = cgltf_result_success;
+                                    break;
+                                } else {
+                                    std::free(bufferData);
+                                }
+                            }
+                            file.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     if (result != cgltf_result_success) {
         if (error) {
-            *error = "Failed to load buffers: " + std::to_string(result);
+            std::string debugInfo = "GLTF path: " + pathStr + ". Buffers: ";
+            for (cgltf_size i = 0; i < outData->buffers_count; ++i) {
+                if (outData->buffers[i].uri) {
+                    debugInfo += std::string(outData->buffers[i].uri) + " ";
+                }
+            }
+            
+            const char* msg = "Unknown error";
+            switch (result) {
+                case cgltf_result_data_too_short: msg = "Data too short"; break;
+                case cgltf_result_unknown_format: msg = "Unknown format"; break;
+                case cgltf_result_invalid_json: msg = "Invalid JSON"; break;
+                case cgltf_result_invalid_gltf: msg = "Invalid glTF"; break;
+                case cgltf_result_invalid_options: msg = "Invalid options"; break;
+                case cgltf_result_file_not_found: msg = "Buffer file not found (check .bin files)"; break;
+                case cgltf_result_io_error: msg = "IO error"; break;
+                case cgltf_result_out_of_memory: msg = "Out of memory"; break;
+                default: break;
+            }
+            *error = "Failed to load buffers (" + std::string(msg) + "): " + std::to_string(result) + ". " + debugInfo;
         }
         cgltf_free(outData);
         outData = nullptr;

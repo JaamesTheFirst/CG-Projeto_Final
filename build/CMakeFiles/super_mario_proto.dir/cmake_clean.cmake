@@ -15,6 +15,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o.d"
   "CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o"
   "CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o.d"
+  "CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.o"
+  "CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.o.d"
   "CMakeFiles/super_mario_proto.dir/src/main.cpp.o"
   "CMakeFiles/super_mario_proto.dir/src/main.cpp.o.d"
   "super_mario_proto"

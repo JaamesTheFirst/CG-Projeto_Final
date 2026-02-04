@@ -3,6 +3,7 @@
 #include "Player.hpp"
 #include "Enemy.hpp"
 #include "LevelManager.hpp"
+#include "UImanager.hpp"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -208,27 +209,12 @@ int main(int argc, char** argv) {
     Player player;
     std::vector<Enemy> enemies;
     LevelManager levelManager(assetsRoot);
+    UIManager uiManager;
+    uiManager.Initialize(window, initialWidth, initialHeight, assetsRoot / "fonts" / "DejaVuSans.ttf");
+    uiManager.SetLevelCount(levelManager.GetLevelCount());
 
     std::string modelError;
-    int startLevel = 0;
-    if (argc > 1) {
-        std::string arg = argv[1];
-        if (arg.rfind("lvl", 0) == 0 && arg.size() > 3) {
-            try {
-                startLevel = std::max(0, std::stoi(arg.substr(3)) - 1); // lvl1 -> index 0
-            } catch (...) {
-                startLevel = 0;
-            }
-        }
-    }
-
-    if (!levelManager.LoadLevel(startLevel, player, enemies, modelError)) {
-        std::cerr << "Unable to load initial level." << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return EXIT_FAILURE;
-    }
-    camera.distance = levelManager.GetDiagonal() * 1.5f;
+    bool levelLoaded = false;
     glm::vec3 lightDir = glm::normalize(glm::vec3(-0.4f, -1.0f, -0.3f));
     glm::vec3 lightColor(1.0f, 0.96f, 0.86f);
     // Moderate ambient lighting
@@ -309,8 +295,39 @@ int main(int argc, char** argv) {
         float aspect = width > 0 && height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
 
         glViewport(0, 0, width, height);
+        uiManager.OnResize(width, height);
         glClearColor(0.02f, 0.02f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        uiManager.Update(window, deltaTime);
+        
+        int selectedLevel = uiManager.GetSelectedLevel();
+        if (selectedLevel >= 0) {
+            if (levelManager.LoadLevel(selectedLevel, player, enemies, modelError)) {
+                camera.distance = levelManager.GetDiagonal() * 1.5f;
+                levelLoaded = true;
+                uiManager.ClearSelection();
+            } else {
+                std::cerr << "Failed to load level " << selectedLevel << std::endl;
+                uiManager.ClearSelection();
+                uiManager.SetState(GameState::LEVEL_SELECT);
+            }
+        }
+
+        if (uiManager.GetState() != GameState::PLAYING) {
+            uiManager.Draw();
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+            continue;
+        }
+
+        if (!levelLoaded) {
+            std::cerr << "Warning: In PLAYING state but no level loaded. Returning to menu.\n";
+            uiManager.SetState(GameState::LEVEL_SELECT);
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+            continue;
+        }
 
         // Enable alpha blending for transparent objects (like foliage)
         glEnable(GL_BLEND);
@@ -564,22 +581,26 @@ int main(int argc, char** argv) {
         // Level transition: spherical trigger near the end of the level.
         float distToFlag = glm::length(player.pos - levelManager.GetFlagTriggerCenter());
         if (distToFlag <= levelManager.GetFlagTriggerRadius()) {
-            int nextLevel = levelManager.GetCurrentLevel() + 1;
-            if (nextLevel < levelManager.GetLevelCount()) {
-                std::cout << "Reached flag. Loading level " << nextLevel
-                          << " (trigger center " << levelManager.GetFlagTriggerCenter().x << "," << levelManager.GetFlagTriggerCenter().y << "," << levelManager.GetFlagTriggerCenter().z
-                          << " radius " << levelManager.GetFlagTriggerRadius()
-                          << " player " << player.pos.x << "," << player.pos.y << "," << player.pos.z
-                          << " dist " << distToFlag << ")...\n";
-                if (levelManager.LoadLevel(nextLevel, player, enemies, modelError)) {
-                    camera.distance = levelManager.GetDiagonal() * 1.5f;
-                    // Start next frame with new level state.
-                    glfwPollEvents();
-                    continue;
-                }
-            } else {
-                std::cout << "Reached flag. No further levels configured.\n";
-            }
+            std::cout << "Flag trigger hit! Level " << levelManager.GetCurrentLevel() << " complete!\n";
+            int currentLvl = levelManager.GetCurrentLevel();
+            bool isFinal = (currentLvl + 1 >= levelManager.GetLevelCount());
+            
+            // Show level complete screen with animation
+            uiManager.ShowLevelComplete(currentLvl, isFinal);
+            levelLoaded = false;
+            glfwPollEvents();
+            continue;
+        }
+        
+        if (player.pos.y < levelManager.GetBoundsMin().y - 50.0f) {
+            std::cout << "Player fell out of bounds. Reloading level.\n";
+            levelManager.LoadLevel(levelManager.GetCurrentLevel(), player, enemies, modelError);
+            camera.distance = levelManager.GetDiagonal() * 1.5f;
+            continue;
+        }
+        
+        if (!levelLoaded && uiManager.GetState() == GameState::PLAYING) {
+            uiManager.SetState(GameState::LEVEL_SELECT);
         }
 
         shaderProgram.Use();

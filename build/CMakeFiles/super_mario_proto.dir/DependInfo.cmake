@@ -16,6 +16,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/tiago/CG-Projeto_Final/src/Player.cpp" "CMakeFiles/super_mario_proto.dir/src/Player.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/Player.cpp.o.d"
   "/home/tiago/CG-Projeto_Final/src/ShaderProgram.cpp" "CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/ShaderProgram.cpp.o.d"
   "/home/tiago/CG-Projeto_Final/src/TextureLoader.cpp" "CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.o.d"
+  "/home/tiago/CG-Projeto_Final/src/UImanager.cpp" "CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.o.d"
   "/home/tiago/CG-Projeto_Final/src/main.cpp" "CMakeFiles/super_mario_proto.dir/src/main.cpp.o" "gcc" "CMakeFiles/super_mario_proto.dir/src/main.cpp.o.d"
   )
 

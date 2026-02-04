@@ -321,6 +321,30 @@ src/TextureLoader.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/TextureLoader.cpp.s
 .PHONY : src/TextureLoader.cpp.s
 
+src/UImanager.o: src/UImanager.cpp.o
+.PHONY : src/UImanager.o
+
+# target to build an object file
+src/UImanager.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.o
+.PHONY : src/UImanager.cpp.o
+
+src/UImanager.i: src/UImanager.cpp.i
+.PHONY : src/UImanager.i
+
+# target to preprocess a source file
+src/UImanager.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.i
+.PHONY : src/UImanager.cpp.i
+
+src/UImanager.s: src/UImanager.cpp.s
+.PHONY : src/UImanager.s
+
+# target to generate assembly for a file
+src/UImanager.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/super_mario_proto.dir/build.make CMakeFiles/super_mario_proto.dir/src/UImanager.cpp.s
+.PHONY : src/UImanager.cpp.s
+
 src/main.o: src/main.cpp.o
 .PHONY : src/main.o
 
@@ -378,6 +402,9 @@ help:
 	@echo "... src/TextureLoader.o"
 	@echo "... src/TextureLoader.i"
 	@echo "... src/TextureLoader.s"
+	@echo "... src/UImanager.o"
+	@echo "... src/UImanager.i"
+	@echo "... src/UImanager.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
